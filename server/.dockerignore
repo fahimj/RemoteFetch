@@ -18,7 +18,5 @@ ENV/
 *.swp
 *.swo
 
-# Local files not needed in container
+# Docs
 README.md
-client.py
-cli.py
