@@ -8,3 +8,8 @@ urllib3<2  # v2 requires OpenSSL 1.1.1+; pin to 1.x for LibreSSL (macOS system P
 # Server — Flask + WebSocket
 flask>=2.0
 flask-sock>=0.6
+
+# Production server with WebSocket support
+gunicorn>=21.0
+gevent>=23.0
+gevent-websocket>=0.10
