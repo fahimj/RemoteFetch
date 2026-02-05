@@ -13,7 +13,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 CLIENT_ID = os.getenv('CLIENT_ID', 'client_1')
-SERVER_URL = os.getenv('SERVER_URL', 'ws://localhost:8080')
+# use ws://localhost:8080 for local server, use wss://remotefetch-490044025500.us-west1.run.app to connect a deployed server in GCP cloud run
+SERVER_URL = os.getenv('SERVER_URL', 'wss://remotefetch-490044025500.us-west1.run.app')
 FILE_PATH = os.getenv('FILE_PATH', '$HOME/file_to_download.txt')
 CHUNK_SIZE = 1024 * 1024
 

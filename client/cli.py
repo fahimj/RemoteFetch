@@ -5,7 +5,7 @@ Simple CLI for the file download system
 import requests
 import sys
 
-SERVER = "http://localhost:8080"
+SERVER = "https://remotefetch-490044025500.us-west1.run.app"
 
 
 def list_clients():
@@ -18,17 +18,25 @@ def list_clients():
 
 
 def download_file(client_id, output='downloaded.txt'):
-    """Download file from client"""
+    """Download file from client (streamed for large files)"""
     print(f"Downloading from {client_id}...")
     
-    r = requests.get(f"{SERVER}/api/download/{client_id}")
+    r = requests.get(f"{SERVER}/api/download/{client_id}", stream=True)
     
     if r.status_code == 200:
+        size = 0
         with open(output, 'wb') as f:
-            f.write(r.content)
-        print(f"✓ Downloaded: {output} ({len(r.content):,} bytes)")
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    size += len(chunk)
+        print(f"✓ Downloaded: {output} ({size:,} bytes)")
     else:
-        print(f"✗ Error: {r.json().get('error')}")
+        try:
+            msg = r.json().get('error', r.text or r.reason)
+        except Exception:
+            msg = r.text or r.reason or f"HTTP {r.status_code}"
+        print(f"✗ Error: {msg}")
         sys.exit(1)
 
 
