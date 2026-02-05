@@ -12,7 +12,7 @@ COPY server.py .
 # Cloud Run injects the PORT environment variable
 ENV PORT=8080
 
-# Use gevent worker for WebSocket support
+# Use eventlet worker for WebSocket (avoids 1002 protocol errors behind Cloud Run proxy)
 # --workers 1: Required because app uses in-memory state (clients/downloads dicts)
 # --timeout 0: Prevents WebSocket connection timeouts
-CMD exec gunicorn --bind :$PORT --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --timeout 0 server:app
+CMD exec gunicorn --bind :$PORT --worker-class eventlet --workers 1 --timeout 0 server:app

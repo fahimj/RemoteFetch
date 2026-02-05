@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import asyncio
 import base64
 from flask import Flask, jsonify, Response
 from flask_sock import Sock
