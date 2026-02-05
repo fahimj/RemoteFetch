@@ -8,6 +8,8 @@ This codebase demonstrates a Python system that lets **on-premise clients** (e.g
 - **Cloud Server**: Receives WebSocket connections + exposes REST API
 - **Admin Users**: Use API or CLI to trigger downloads from specific restaurants
 
+To support large file transfers (e.g. 100 MB+), a key architectural choice is **streaming**: the server streams the download response using chunked transfer encoding instead of buffering the whole file, avoiding platform response-size limits (e.g. Cloud Run’s 32 MB non-streaming limit) and keeping memory use bounded.
+
 ## Project Structure
 
 ```
@@ -44,9 +46,15 @@ docker build -t remotefetch-server .
 docker run -p 8080:8080 remotefetch-server
 ```
 
+**Cloud Run:** The server uses the eventlet worker to avoid protocol errors behind the proxy.
+
+**Deployed instance:** The server is deployed on GCP Cloud Run. To access it, use: `https://remotefetch-490044025500.us-west1.run.app`
+
 ### Restaurant Client (On-Premise)
 
 Before running the client, ensure there is a file at the path `$HOME/file_to_download.txt`
+
+The client connects to the server at **`wss://remotefetch-490044025500.us-west1.run.app`** by default. Override with `SERVER_URL` for a different server.
 
 ```bash
 cd client
@@ -57,6 +65,9 @@ CLIENT_ID=restaurant_sf python client.py
 ```
 
 ### Admin/User (Laptop/Desktop)
+
+The CLI and examples below use the deployed server: **`https://remotefetch-490044025500.us-west1.run.app`**
+
 ```bash
 cd client
 python3 -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
@@ -67,8 +78,8 @@ python cli.py list                              # See connected restaurants
 python cli.py download restaurant_sf menu.txt   # Download file
 
 # Option 2: API
-curl http://server:8080/api/clients             # List restaurants
-curl http://server:8080/api/download/restaurant_sf -o menu.txt
+curl https://remotefetch-490044025500.us-west1.run.app/api/clients             # List restaurants
+curl https://remotefetch-490044025500.us-west1.run.app/api/download/restaurant_sf -o menu.txt
 ```
 
 ## API
