@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import base64
-from flask import Flask, jsonify, Response
+from flask import Flask, jsonify, Response, stream_with_context
 from flask_sock import Sock
 import json
 import logging
@@ -54,43 +54,45 @@ def download_file(client_id):
     if client_id not in clients:
         return jsonify({'error': 'Client not connected'}), 404
     
+    import time
     try:
-        # Initialize download
         downloads[client_id] = []
-        
-        # Request file
         clients[client_id].send(json.dumps({'type': 'download'}))
         
-        # Collect chunks (simple polling with timeout)
-        import time
+        # Wait for first chunk (or complete) so we can return 408 if no data
         timeout = 60
         start = time.time()
-        file_data = bytearray()
-        
         while time.time() - start < timeout:
             if downloads[client_id]:
-                chunk = downloads[client_id].pop(0)
-                
-                if chunk.get('type') == 'complete':
-                    break
-                
-                # Decode chunk
-                chunk_bytes = base64.b64decode(chunk['data'])
-                file_data.extend(chunk_bytes)
-                logger.info(f"Chunk {chunk['num']}: {len(chunk_bytes)} bytes")
-            else:
-                time.sleep(0.1)  # Wait for data
-        
-        # Cleanup
-        del downloads[client_id]
-        
-        if not file_data:
+                break
+            time.sleep(0.1)
+        else:
+            if client_id in downloads:
+                del downloads[client_id]
             return jsonify({'error': 'No data received'}), 408
         
-        logger.info(f"Download complete: {len(file_data)} bytes")
+        def generate():
+            start_ts = time.time()
+            try:
+                while True:
+                    if downloads[client_id]:
+                        chunk = downloads[client_id].pop(0)
+                        if chunk.get('type') == 'complete':
+                            break
+                        data = base64.b64decode(chunk['data'])
+                        logger.info(f"Chunk {chunk['num']}: {len(data)} bytes")
+                        yield data
+                        start_ts = time.time()
+                    else:
+                        if time.time() - start_ts > timeout:
+                            break
+                        time.sleep(0.05)
+            finally:
+                if client_id in downloads:
+                    del downloads[client_id]
         
         return Response(
-            bytes(file_data),
+            stream_with_context(generate()),
             mimetype='application/octet-stream',
             headers={'Content-Disposition': f'attachment; filename=file_{client_id}.txt'}
         )
